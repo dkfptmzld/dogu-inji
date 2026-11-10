@@ -1,6 +1,7 @@
 # 3~4주차 3D 영상 전부 만들기: 지오보드 장면 1~8 → videos/03-1/1~8.mp4, 파이프 블록 장면 11~17 → videos/04-1/1~7.mp4
 # 사용: powershell -File render_w34.ps1 [장면번호들]   (번호 없으면 전부)
-param([int[]]$Scenes = @(1,2,3,4,5,6,7,8,11,12,13,14,15,16,17))
+# 장면 3(손가락 스트레칭)은 실제 영상(pipeline/geo_stretch.py)으로 바꿔서 기본 목록에서 뺐다
+param([int[]]$Scenes = @(1,2,4,5,6,7,8,11,12,13,14,15,16,17))
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 $env:GPU = '1'; $env:PAGE = 'w34.html'
