@@ -1,0 +1,11 @@
+# 설치 파일 (npm i 로 다시 받음)
+node_modules/
+# 다시 만들 수 있는 파일
+*.bundle.js
+pipeline/cube_3d/src/w34.js
+휴대폰용/
+__pycache__/
+*.pyc
+# 렌더 중간 파일
+frames/
+_ans*/

@@ -1,0 +1,1 @@
+{"name":"cube3d","private":true,"dependencies":{"esbuild":"^0.24.0","playwright":"^1.64.1","three":"^0.169.0"}}

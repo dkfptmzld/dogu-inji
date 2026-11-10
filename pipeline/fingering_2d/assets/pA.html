@@ -1,0 +1,88 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0}canvas{display:block}</style></head><body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script src="rubber.js"></script>
+<script>
+// A안(완성된 고무줄이 통째로 내려옴)을 모양 번호에 상관없이 쓰는 버전. 주소 뒤 ?k=3 처럼 모양 번호를 준다.
+// 고무줄 정보는 gN.js(bandgeo2.py로 만든 gN.json을 감싼 것), 살 눌림은 warpN.png.
+const K=new URLSearchParams(location.search).get('k')||'3';
+document.write('<script src="g'+K+'.js"><\/script>');
+</script>
+<script>
+const FONT='"Noto Sans CJK KR","Noto Sans KR","Malgun Gothic",sans-serif';
+const SRC={x:120,y:150,w:2240,h:1430}, S=1040/SRC.h, OX=(1920-SRC.w*S)/2, OY=20;
+const PANEL={L:[360,248,1221,1556], R:[1259,248,2120,1556]};
+const ACC='#e8743b';
+const BG=new Image(); BG.src='hand_clean.png'; const WP=new Image(); WP.src='warp'+K+'.png';
+const c=document.getElementById('c'), g=c.getContext('2d');
+const X=x=>OX+(x-SRC.x)*S, Y=y=>OY+(y-SRC.y)*S;
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const ease=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+const css3=(c,a=1)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const FX={L:[[563,'엄지'],[711,'검지'],[856,'중지'],[980,'약지'],[1095,'새끼손가락']], R:[[1380,'새끼손가락'],[1502,'약지'],[1624,'중지'],[1762,'검지'],[1928,'엄지']]};
+function prep(B){
+  const side=B.c[0]<1240?'L':'R';
+  const names=B.fingers.map(([a,b])=>{const x=B.c[0]+B.d[0]*(a+b)/2; return FX[side].reduce((m,f)=>Math.abs(f[0]-x)<Math.abs(m[0]-x)?f:m)[1];});
+  let BB=B, nm=names;   // 검지 쪽에서 시작하도록 오른손은 방향을 뒤집음
+  if(side==='R'){ BB={...B,d:[-B.d[0],-B.d[1]],fingers:B.fingers.map(([a,b])=>[-b,-a]).reverse()}; nm=[...names].reverse(); }
+  return {B:BB, side, names:nm};
+}
+// 순서: 왼손 → 오른손, 손바닥 쪽(아래) 고무줄부터, 엄지는 손마다 마지막
+const ALL=G.map(prep);
+const key=o=>(o.side==='R'?1000:0)+(o.names[0]==='엄지'?500:0)-o.B.c[1]/10;
+const ORDER=ALL.sort((a,b)=>key(a)-key(b)), N=ORDER.length;
+function base(){ g.setTransform(1,0,0,1,0,0); g.fillStyle='#f4f1ea'; g.fillRect(0,0,1920,1080); g.drawImage(BG,SRC.x,SRC.y,SRC.w,SRC.h,OX,OY,SRC.w*S,SRC.h*S); }
+function src(){ g.setTransform(S,0,0,S,OX-SRC.x*S,OY-SRC.y*S); }
+function scr(){ g.setTransform(1,0,0,1,0,0); }
+function dim(side,a){ if(a<=0)return; scr(); const p=PANEL[side]; g.save(); g.globalAlpha=a; g.fillStyle='#f4f1ea'; g.fillRect(X(p[0]),Y(p[1]),(p[2]-p[0])*S,(p[3]-p[1])*S); g.restore(); }
+function nrm(B){ let nx=-B.d[1], ny=B.d[0]; if(ny<0){nx=-nx;ny=-ny;} return [nx,ny]; }
+function PT(B,t,s){ const [nx,ny]=nrm(B); return [B.c[0]+B.d[0]*t+nx*s, B.c[1]+B.d[1]*t+ny*s]; }
+function pinch(B,fingers,alpha){ if(alpha<=0)return; src(); const W=26;
+  for(const [a,b] of fingers){ g.save(); g.globalAlpha=alpha; g.beginPath();
+    [[a-14,-W*2.6],[b+14,-W*2.6],[b+14,W*2.6],[a-14,W*2.6]].forEach(([t,s],i)=>{const q=PT(B,t,s); i?g.lineTo(...q):g.moveTo(...q);}); g.clip(); g.drawImage(WP,0,0); g.restore(); } }
+function arrow(tx,ty,ux,uy,len,alpha){ if(alpha<=0)return; scr(); const ang=Math.atan2(uy,ux);
+  g.save(); g.globalAlpha=alpha; g.translate(tx,ty); g.rotate(ang); const sw=24, hw=60, hl=64;
+  const path=()=>{g.beginPath(); g.moveTo(0,0); g.lineTo(hl,-hw/2-6); g.lineTo(hl,-sw/2); g.lineTo(len,-sw/2); g.arcTo(len+sw/2,-sw/2,len+sw/2,0,sw/2); g.arcTo(len+sw/2,sw/2,len,sw/2,sw/2); g.lineTo(hl,sw/2); g.lineTo(hl,hw/2+6); g.closePath();};
+  g.shadowColor='rgba(0,0,0,.25)'; g.shadowBlur=12; g.shadowOffsetY=4; path(); g.lineJoin='round'; g.lineWidth=12; g.strokeStyle='#fff'; g.stroke();
+  g.shadowColor='transparent'; path(); g.fillStyle=ACC; g.fill(); g.restore(); }
+function bubble(x,y,text,alpha,col){ if(alpha<=0)return; scr();
+  g.save(); g.globalAlpha=alpha; g.font='800 44px '+FONT; const w=g.measureText(text).width+56, h=76;
+  x=clamp(x,w/2+20,1900-w/2); y=clamp(y,50,1030);
+  g.shadowColor='rgba(0,0,0,.18)'; g.shadowBlur=14; g.shadowOffsetY=4; g.fillStyle='#fff'; g.beginPath(); g.roundRect(x-w/2,y-h/2,w,h,38); g.fill();
+  g.shadowColor='transparent'; g.lineWidth=5; g.strokeStyle=col; g.stroke(); g.fillStyle='#1f2a37'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(text,x,y+2); g.restore(); }
+function dashOn(B,a,b,alpha,col,t){ if(alpha<=0)return; src(); const W=26; g.save(); g.globalAlpha=alpha*(0.65+0.35*Math.sin(t*7));
+  g.setLineDash([12/S,9/S]); g.lineWidth=5/S; g.strokeStyle=css3(col); const [mx,my]=PT(B,(a+b)/2,0);
+  g.beginPath(); g.ellipse(mx,my,(b-a)/2+14,W*1.15,Math.atan2(B.d[1],B.d[0]),0,Math.PI*2); g.stroke(); g.restore(); }
+function badge(T,start,out){ if(T<start)return; scr(); const a=clamp((T-start)/0.4)*out;
+  g.save(); g.globalAlpha=a; g.font='900 64px '+FONT; const txt='완성! 그림과 똑같나요?';
+  const w=g.measureText(txt).width+90; g.fillStyle=ACC; g.beginPath(); g.roundRect(960-w/2,940,w,104,52); g.fill();
+  g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(txt,960,994); g.restore(); }
+function pointAt(B,side,a,b,label,col,alpha,t){
+  const [mx,my]=PT(B,(a+b)/2,-26*0.7); const tx=X(mx), ty=Y(my);
+  const out=side==='L'?-1:1, rot=0.55*out; const ux=-Math.sin(rot), uy=-Math.cos(rot);
+  const bob=Math.sin(t*6)*12; arrow(tx+ux*(14+bob),ty+uy*(14+bob),ux,uy,150,alpha);
+  bubble(tx+ux*250,ty+uy*250,label,alpha,css3(col));
+}
+const A_B=3.4, A_T=N*A_B+3.6+0.6;
+function drawA(T){
+  base(); const done=T>=N*A_B, out=1-clamp((T-(N*A_B+3.6))/0.6);
+  const k=Math.min(N-1,Math.floor(T/A_B)), t=T-k*A_B;
+  // 살 눌림을 먼저 모두 깔고 고무줄은 그 위에 (가까운 고무줄을 눌림 그림이 덮지 않도록)
+  const placed=done?N:k, o=ORDER[k], B=o.B, F=B.fingers;
+  for(let j=0;j<placed;j++) pinch(ORDER[j].B,ORDER[j].B.fingers,out);
+  if(!done&&t>=1.1) pinch(B,F,clamp((t-1.95)/0.25));
+  for(let j=0;j<placed;j++){ src(); drawRubber(g,ORDER[j].B,{alpha:out}); }
+  if(done){ badge(T,N*A_B,out); return; }
+  const other=o.side==='L'?'R':'L';
+  const first=k===0||ORDER[k-1].side!==o.side, switching=k>0&&first;
+  dim(other,0.35*(k===0?clamp(t/0.4):1)); if(switching) dim(o.side,0.35*(1-clamp(t/0.4)));
+  const hand=o.side==='L'?'왼손 ':'오른손 ';
+  const label=hand+(o.names.length>1?o.names[0]+'~'+o.names[o.names.length-1]:o.names[0]);
+  const cueA=clamp(t/0.3)*(1-clamp((t-1.9)/0.3));
+  dashOn(B,F[0][0],F[F.length-1][1],cueA,B.color,t);
+  const mid=Math.floor((F.length-1)/2); pointAt(B,o.side,F[mid][0],F[F.length-1-mid][1],label,B.color,clamp(t/0.3)*(1-clamp((t-1.7)/0.3)),t);
+  if(t>=1.1){ const p=clamp((t-1.1)/0.85), lift=230*(1-ease(p)), a=clamp((t-1.1)/0.2);
+    src(); drawRubber(g,B,{lift,alpha:a,loose:1-clamp((t-1.95)/0.3)}); }
+}
+window.TA=A_T; window.drawA=drawA; window.ORDER_INFO=ORDER.map(o=>o.side+' '+o.names.join(','));
+window.ready=Promise.all([BG,WP].map(i=>i.decode())).then(()=>document.fonts.load('800 44px '+FONT));
+</script></body></html>

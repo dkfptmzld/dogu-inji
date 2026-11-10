@@ -1,0 +1,17 @@
+{
+  "name": "ring3d",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@webxr-input-profiles/assets": "^1.0.20",
+    "esbuild": "^0.28.2",
+    "three": "^0.169.0"
+  }
+}

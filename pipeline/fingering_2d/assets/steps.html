@@ -1,0 +1,148 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0}canvas{display:block}</style></head><body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+const R = [{"file": "s1_r0.png", "x": 790, "y": 605, "w": 132, "h": 79, "cx": 855.9786556824565, "cy": 651.1072832802846, "dx": -0.010525732417233034, "dy": -0.9999446029441235, "rgb": [219, 75, 103]}, {"file": "s1_r1.png", "x": 916, "y": 632, "w": 130, "h": 88, "cx": 980.0497702909648, "cy": 673.7586140888209, "dx": 0.12060838640311315, "dy": -0.9927001647674072, "rgb": [58, 55, 53]}, {"file": "s1_r2.png", "x": 1435, "y": 648, "w": 137, "h": 84, "cx": 1502.3360292701714, "cy": 688.6909300982092, "dx": -0.044400616990172906, "dy": -0.9990138063164552, "rgb": [223, 112, 60]}, {"file": "s1_r3.png", "x": 1557, "y": 635, "w": 132, "h": 82, "cx": 1623.939631078815, "cy": 672.8269051611701, "dx": 0.02127172626656604, "dy": -0.9997737312320425, "rgb": [57, 55, 54]}, {"file": "s1_r4.png", "x": 637, "y": 642, "w": 147, "h": 79, "cx": 710.76, "cy": 685.0834080717489, "dx": -0.15129918579914528, "dy": -0.9884880152923027, "rgb": [210, 230, 96]}, {"file": "s1_r5.png", "x": 1690, "y": 658, "w": 146, "h": 93, "cx": 1761.6826619964975, "cy": 714.7896672504378, "dx": 0.3032036469031164, "dy": -0.9529257833140261, "rgb": [118, 200, 120]}, {"file": "s1_r6.png", "x": 1031, "y": 714, "w": 130, "h": 97, "cx": 1095.0257452574526, "cy": 769.8393341076268, "dx": 0.19378637562227832, "dy": -0.981043750616241, "rgb": [123, 196, 121]}, {"file": "s1_r7.png", "x": 1315, "y": 716, "w": 130, "h": 83, "cx": 1380.1320874920366, "cy": 760.3684434062434, "dx": -0.26397639656139893, "dy": -0.9645291400774053, "rgb": [210, 230, 98]}, {"file": "s1_r8.png", "x": 453, "y": 842, "w": 156, "h": 122, "cx": 533.1842747843074, "cy": 906.4805469640241, "dx": -0.5057194934445921, "dy": -0.8626979737719019, "rgb": [226, 115, 63]}, {"file": "s1_r9.png", "x": 1839, "y": 894, "w": 156, "h": 121, "cx": 1915.1483338725332, "cy": 958.159171789065, "dx": 0.5057195221633879, "dy": -0.8626979569367453, "rgb": [219, 73, 102]}];
+// 순서: [링 번호, 손, 손가락 이름]
+const STEPS = [[8,'L','엄지'],[4,'L','검지'],[0,'L','중지'],[1,'L','약지'],[6,'L','새끼손가락'],
+               [9,'R','엄지'],[5,'R','검지'],[3,'R','중지'],[2,'R','약지'],[7,'R','새끼손가락']];
+const SRC={x:120,y:150,w:2240,h:1430}, S=1040/SRC.h, OX=(1920-SRC.w*S)/2, OY=20;
+const PANEL={L:[360,248,1221,1556], R:[1259,248,2120,1556]};
+const ACC='#e8743b';
+const BG=new Image(); BG.src='hand_clean.png';
+const IM=R.map(r=>{const i=new Image(); i.src=r.file; return i;});
+const c=document.getElementById('c'), g=c.getContext('2d');
+const X=x=>OX+(x-SRC.x)*S, Y=y=>OY+(y-SRC.y)*S;
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const ease=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+const rgb=(r,a=1)=>`rgba(${r.rgb[0]},${r.rgb[1]},${r.rgb[2]},${a})`;
+
+function ring(ri,dx=0,dy=0,sy=1,alpha=1,shadow=true){
+  const r=R[ri], img=IM[ri], cx=X(r.cx)+dx, cy=Y(r.cy)+dy;
+  g.save(); g.globalAlpha=alpha; g.translate(cx,cy); g.scale(1,sy);
+  if(shadow){g.shadowColor='rgba(70,35,20,.35)'; g.shadowBlur=10; g.shadowOffsetY=5;}
+  g.drawImage(img,(r.x-r.cx)*S,(r.y-r.cy)*S,r.w*S,r.h*S); g.restore();
+}
+function dim(side,a){ if(a<=0)return; const p=PANEL[side];
+  g.save(); g.globalAlpha=a; g.fillStyle='#f4f1ea'; g.fillRect(X(p[0]),Y(p[1]),(p[2]-p[0])*S,(p[3]-p[1])*S); g.restore(); }
+function arrow(tx,ty,ux,uy,len,alpha){
+  // 끝점(tx,ty), 방향 u(끝→꼬리)
+  if(alpha<=0)return;
+  const ang=Math.atan2(uy,ux);
+  g.save(); g.globalAlpha=alpha; g.translate(tx,ty); g.rotate(ang);
+  const sw=26, hw=64, hl=70;
+  const path=()=>{g.beginPath(); g.moveTo(0,0); g.lineTo(hl,-hw/2-6); g.lineTo(hl,-sw/2); g.lineTo(len,-sw/2);
+    g.arcTo(len+sw/2,-sw/2,len+sw/2,0,sw/2); g.arcTo(len+sw/2,sw/2,len,sw/2,sw/2);
+    g.lineTo(hl,sw/2); g.lineTo(hl,hw/2+6); g.closePath();};
+  g.shadowColor='rgba(0,0,0,.25)'; g.shadowBlur=12; g.shadowOffsetY=4;
+  path(); g.lineJoin='round'; g.lineWidth=12; g.strokeStyle='#fff'; g.stroke();
+  g.shadowColor='transparent'; path(); g.fillStyle=ACC; g.fill();
+  g.restore();
+}
+function bubble(x,y,text,alpha,col){
+  if(alpha<=0)return;
+  g.save(); g.globalAlpha=alpha; g.font='800 46px "Noto Sans CJK KR","Noto Sans KR",sans-serif';
+  const w=g.measureText(text).width+56, h=78;
+  g.shadowColor='rgba(0,0,0,.18)'; g.shadowBlur=14; g.shadowOffsetY=4;
+  g.fillStyle='#fff'; g.beginPath(); g.roundRect(x-w/2,y-h/2,w,h,39); g.fill();
+  g.shadowColor='transparent'; g.lineWidth=5; g.strokeStyle=col; g.stroke();
+  g.fillStyle='#1f2a37'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(text,x,y+2);
+  g.restore();
+}
+function base(){ g.fillStyle='#f4f1ea'; g.fillRect(0,0,1920,1080); g.drawImage(BG,SRC.x,SRC.y,SRC.w,SRC.h,OX,OY,SRC.w*S,SRC.h*S); }
+
+const STEP_T=5.0, FINAL_T=8.0;
+function drawStep(k,t){
+  base();
+  const [ri,side,name]=STEPS[k], r=R[ri];
+  for(let j=0;j<k;j++) ring(STEPS[j][0]);
+  dim(side==='L'?'R':'L', 0.35);
+  const tx=X(r.cx), ty=Y(r.cy), ux=r.dx, uy=r.dy;
+  const ringH=Math.min(r.w,r.h)*S;
+  const L=240;                                // 떨어지기 시작 거리(px)
+  // 목표 자리 점선
+  const dashA=clamp(t/0.4)*(1-clamp((t-2.4)/0.3));
+  if(dashA>0){ g.save(); g.globalAlpha=dashA*(0.65+0.35*Math.sin(t*7)); g.setLineDash([12,9]); g.lineWidth=6; g.strokeStyle=rgb(r);
+    g.beginPath(); g.ellipse(tx,ty,r.w*S*0.62,r.h*S*0.75,Math.atan2(ux,-uy),0,Math.PI*2); g.stroke(); g.restore(); }
+  // 화살표 (손끝 쪽에서 반지 자리를 가리킴)
+  const arA=clamp(t/0.4)*(1-clamp((t-2.0)/0.4));
+  const bob=Math.sin(t*6)*14*(t<1.7?1:0);
+  const gapTip=ringH*0.45+12+bob;
+  // 화살표는 손가락 옆에서 비스듬히: 손가락 축을 바깥쪽으로 35° 돌린 방향
+  const out = (side==='L'?-1:1)*(name==='엄지'?-1:1);
+  const rot=0.62*out, ax=ux*Math.cos(rot)-uy*Math.sin(rot), ay=ux*Math.sin(rot)+uy*Math.cos(rot);
+  arrow(tx+ax*gapTip, ty+ay*gapTip, ax, ay, 170, arA);
+  // 이름표
+  const bx=tx+ax*(gapTip+250), by=ty+ay*(gapTip+250);
+  bubble(clamp(bx,180,1740), clamp(by,60,1020), (side==='L'?'왼손 ':'오른손 ')+name, clamp(t/0.4)*(1-clamp((t-4.4)/0.4)), rgb(r));
+  // 고무줄 내려오기
+  if(t>=1.5){
+    let p=clamp((t-1.5)/1.0), e=ease(p), off=L*(1-e);
+    let a=clamp((t-1.5)/0.25);
+    let sy=1;
+    if(t>2.5){ const q=clamp((t-2.5)/0.3); sy=1-0.06*Math.sin(q*Math.PI); }
+    const fade=1-clamp((t-4.75)/0.25);
+    ring(ri, ux*off, uy*off, sy, a*fade);
+    // 끼워졌을 때 반짝
+    if(t>2.5&&t<3.3){ const q=(t-2.5)/0.8; g.save(); g.globalAlpha=(1-q); g.fillStyle=rgb(r);
+      for(let n=0;n<10;n++){const an=n/10*Math.PI*2, d=40+80*q; g.beginPath(); g.arc(tx+Math.cos(an)*d*1.25,ty+Math.sin(an)*d*0.85,9*(1-q)+3,0,Math.PI*2); g.fill();}
+      g.restore(); }
+  }
+}
+function drawFinal(t){
+  base();
+  STEPS.forEach(([ri],j)=>{ const t0=0.4+j*0.35; if(t<t0)return; const p=clamp((t-t0)/0.35);
+    const r=R[ri]; const off=60*(1-ease(p)); ring(ri, r.dx*off, r.dy*off, 1, clamp(p*2)*(1-clamp((t-7.7)/0.3))); });
+  const t1=0.4+10*0.35+0.4;
+  if(t>t1){ const a=clamp((t-t1)/0.4)*(1-clamp((t-7.6)/0.3));
+    g.save(); g.globalAlpha=a; g.font='900 64px "Noto Sans CJK KR",sans-serif'; const txt='완성! 그림과 똑같나요?';
+    const w=g.measureText(txt).width+90; g.fillStyle=ACC; g.beginPath(); g.roundRect(960-w/2,940,w,104,52); g.fill();
+    g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(txt,960,994); g.restore(); }
+}
+
+// ── 한 편으로 이어 보기: 고무줄 10개를 차례로, 끝나면 처음으로 ──
+const B=3.4, END_HOLD=3.6, OUT=0.6;
+const SEQ_T=10*B+END_HOLD+OUT;
+function drawSeq(T){
+  base();
+  const k=Math.min(9,Math.floor(T/B)), t=T-k*B, done=T>=10*B;
+  const outA=1-clamp((T-(10*B+END_HOLD))/OUT);
+  for(let j=0;j<(done?10:k);j++) ring(STEPS[j][0],0,0,1,outA);
+  if(done){
+    const a=clamp((T-10*B)/0.4)*outA;
+    g.save(); g.globalAlpha=a; g.font='900 64px "Noto Sans CJK KR",sans-serif'; const txt='완성! 그림과 똑같나요?';
+    const w=g.measureText(txt).width+90; g.fillStyle=ACC; g.beginPath(); g.roundRect(960-w/2,940,w,104,52); g.fill();
+    g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(txt,960,994); g.restore();
+    return;
+  }
+  const [ri,side,name]=STEPS[k], r=R[ri];
+  // 다른 손 흐리게 (손이 바뀔 때 부드럽게)
+  const dimIn = (k===0||k===5) ? clamp(t/0.4) : 1;
+  dim(side==='L'?'R':'L', 0.35*dimIn*(T<0.01?0:1));
+  if(k===5) dim('R', 0.35*(1-clamp(t/0.4)));
+  const tx=X(r.cx), ty=Y(r.cy), ux=r.dx, uy=r.dy, ringH=Math.min(r.w,r.h)*S, L=240;
+  const dashA=clamp(t/0.3)*(1-clamp((t-1.9)/0.3));
+  if(dashA>0){ g.save(); g.globalAlpha=dashA*(0.65+0.35*Math.sin(t*7)); g.setLineDash([12,9]); g.lineWidth=6; g.strokeStyle=rgb(r);
+    g.beginPath(); g.ellipse(tx,ty,r.w*S*0.62,r.h*S*0.75,Math.atan2(ux,-uy),0,Math.PI*2); g.stroke(); g.restore(); }
+  const arA=clamp(t/0.3)*(1-clamp((t-1.6)/0.3));
+  const bob=Math.sin(t*6)*14*(t<1.3?1:0);
+  const gapTip=ringH*0.45+12+bob;
+  const out=(side==='L'?-1:1)*(name==='엄지'?-1:1);
+  const rot=0.62*out, ax=ux*Math.cos(rot)-uy*Math.sin(rot), ay=ux*Math.sin(rot)+uy*Math.cos(rot);
+  arrow(tx+ax*gapTip, ty+ay*gapTip, ax, ay, 170, arA);
+  const bx=tx+ax*(gapTip+250), by=ty+ay*(gapTip+250);
+  bubble(clamp(bx,180,1740), clamp(by,60,1020), (side==='L'?'왼손 ':'오른손 ')+name, clamp(t/0.3)*(1-clamp((t-3.0)/0.35)), rgb(r));
+  if(t>=1.1){
+    const p=clamp((t-1.1)/0.85), off=L*(1-ease(p)), a=clamp((t-1.1)/0.2);
+    let sy=1; if(t>1.95){const q=clamp((t-1.95)/0.3); sy=1-0.06*Math.sin(q*Math.PI);}
+    ring(ri, ux*off, uy*off, sy, a);
+    if(t>1.95&&t<2.75){ const q=(t-1.95)/0.8; g.save(); g.globalAlpha=(1-q); g.fillStyle=rgb(r);
+      for(let n=0;n<10;n++){const an=n/10*Math.PI*2, d=40+80*q; g.beginPath(); g.arc(tx+Math.cos(an)*d*1.25,ty+Math.sin(an)*d*0.85,9*(1-q)+3,0,Math.PI*2); g.fill();}
+      g.restore(); }
+  }
+}
+window.SEQ_T=SEQ_T; window.drawSeq=drawSeq;
+
+window.TOTALS=[...Array(10).fill(STEP_T), FINAL_T];
+window.draw=(k,t)=>{ if(k<10) drawStep(k,t); else drawFinal(t); };
+window.ready=Promise.all([BG,...IM].map(i=>i.decode())).then(()=>document.fonts.load('800 46px "Noto Sans CJK KR"'));
+</script></body></html>

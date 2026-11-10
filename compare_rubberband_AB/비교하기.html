@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>고무줄 방식 비교</title>
+<style>
+  :root { --bg:#f4f1ea; --panel:#fff; --ink:#1f2a37; --muted:#6b7280; --accent:#e8743b; --line:#e5e0d5; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--ink); font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo","Noto Sans KR",sans-serif; padding:28px 32px 40px; }
+  header { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+  h1 { font-size:34px; font-weight:800; }
+  h1 span { color:var(--accent); }
+  header p { color:var(--muted); font-size:17px; margin-top:6px; }
+  .btn { background:var(--accent); color:#fff; border:0; border-radius:14px; font:inherit; font-size:18px; font-weight:800; padding:12px 22px; cursor:pointer; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  .card { background:var(--panel); border-radius:20px; box-shadow:0 6px 20px rgba(31,42,55,.08); overflow:hidden; display:flex; flex-direction:column; }
+  .head { padding:16px 20px 12px; display:flex; align-items:center; gap:12px; }
+  .tag { background:var(--accent); color:#fff; font-weight:900; font-size:20px; padding:4px 14px; border-radius:999px; }
+  .head h2 { font-size:24px; font-weight:800; }
+  video { width:100%; display:block; background:#f4f1ea; aspect-ratio:16/9; cursor:zoom-in; }
+  ul { padding:14px 22px 20px 40px; font-size:17px; line-height:1.7; color:#374151; }
+  .note { margin-top:18px; color:var(--muted); font-size:15px; }
+  @media (max-width: 900px) { body { padding:16px; } .grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>핑거링 2번 모양 · <span>고무줄 방식 비교</span></h1>
+      <p>두 영상은 각각 끝나면 처음부터 다시 나와요. 영상을 누르면 크게 볼 수 있어요.</p>
+    </div>
+    <button class="btn" id="restart">둘 다 처음부터</button>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <div class="head"><span class="tag">A</span><h2>위에서 통째로 내려와 끼우기</h2></div>
+      <video id="vA" src="videos/A.mp4" autoplay loop muted playsinline></video>
+      <ul>
+        <li>완성된 고무줄이 한 번에 내려와 손가락들에 걸려요</li>
+        <li>짧고 단순해서 빠르게 훑어보기 좋아요 (약 25초)</li>
+        <li>어떤 손가락들에 거는지 이름표로 한 번에 알려줘요</li>
+      </ul>
+    </section>
+    <section class="card">
+      <div class="head"><span class="tag">B</span><h2>한 손가락에 걸고 당겨 늘리기</h2></div>
+      <video id="vB" src="videos/B.mp4" autoplay loop muted playsinline></video>
+      <ul>
+        <li>검지에 먼저 걸고, 옆 손가락으로 하나씩 당겨 걸어요</li>
+        <li>실제 손으로 하는 순서와 같아서 따라 하기 쉬워요 (약 38초)</li>
+        <li>당길 때마다 "중지까지 당겨요"처럼 다음 손가락을 알려줘요</li>
+      </ul>
+    </section>
+  </div>
+  <p class="note">인터넷 없이 열려요. 이 파일과 videos 폴더를 같은 곳에 두세요.</p>
+
+<script>
+  const vids = [document.getElementById('vA'), document.getElementById('vB')];
+  document.getElementById('restart').onclick = () => vids.forEach(v => { v.currentTime = 0; v.play(); });
+  vids.forEach(v => v.onclick = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else (v.requestFullscreen || v.webkitRequestFullscreen || function(){}).call(v);
+  });
+</script>
+</body>
+</html>

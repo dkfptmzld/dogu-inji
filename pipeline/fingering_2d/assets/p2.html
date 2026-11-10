@@ -1,0 +1,113 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0}canvas{display:block}</style></head><body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script src="rubber.js"></script>
+<script>
+const G=[{"i": 0, "c": [1706.5217568781125, 549.2843497428362], "d": [0.9813829421678552, 0.19206124237327085], "thick": 41.80150150497325, "color": [216, 241, 77], "fingers": [[-133.14838098506334, -39.14838098506334], [35.85161901493666, 125.85161901493666]], "t0": -144.14838098506334, "t1": 144.10420651836657, "cx": 1706.6181359804616, "cy": 549.3266367289057}, {"i": 1, "c": [772.6131142179707, 552.25860518355], "d": [0.9818687749084649, -0.18956188662215295], "thick": 41.861795241859625, "color": [216, 242, 77], "fingers": [[-124.82290430847033, -34.82290430847033], [39.17709569152967, 133.17709569152967]], "t0": -143.82290430847033, "t1": 143.8350584113818, "cx": 772.5728468993775, "cy": 552.2978488692775}, {"i": 2, "c": [844.6592996204237, 630.3896779723276], "d": [0.9995381915152631, -0.03038755834872281], "thick": 41.854065607950595, "color": [234, 101, 39], "fingers": [[-189.1929308165195, -87.19293081651949], [-35.19293081651949, 62.80706918348051], [90.80706918348051, 185.8070691834805]], "t0": -201.19293081651946, "t1": 200.11133614867322, "cx": 843.4760781671159, "cy": 629.999606918239}, {"i": 3, "c": [1636.9923834293145, 641.0858257477244], "d": [0.9996473218482145, 0.02655620307371098], "thick": 41.98721481358601, "color": [234, 101, 39], "fingers": [[-187.64079449597938, -91.64079449597938], [-63.64079449597938, 34.35920550402062], [82.35920550402062, 184.35920550402062]], "t0": -201.64079449597938, "t1": 196.88274467645275, "cx": 1635.482366260968, "cy": 640.6709312199264}, {"i": 4, "c": [911.8031528072632, 720.2666335426171], "d": [0.9957550785255928, 0.09204250969248196], "thick": 43.042719021482235, "color": [19, 19, 19], "fingers": [[-247.5283077929363, -140.5283077929363], [-104.52830779293629, -7.528307792936289], [13.471692207063711, 105.47169220706371], [133.4716922070637, 225.4716922070637]], "t0": -255.52830779293626, "t1": 252.94259995372946, "cx": 912.1642779822472, "cy": 720.3394674171899}, {"i": 5, "c": [1568.8080835980297, 732.8546701652626], "d": [0.9963560519829786, -0.08529136929896249], "thick": 42.71209016831344, "color": [19, 19, 19], "fingers": [[-222.3836410174414, -136.3836410174414], [-105.38364101744139, -11.383641017441391], [5.616358982558609, 102.61635898255861], [134.6163589825586, 243.6163589825586]], "t0": -251.38364101744142, "t1": 251.2876871672883, "cx": 1568.4927670052323, "cy": 732.7630479708042}];
+const SRC={x:120,y:150,w:2240,h:1430}, S=1040/SRC.h, OX=(1920-SRC.w*S)/2, OY=20;
+const PANEL={L:[360,248,1221,1556], R:[1259,248,2120,1556]};
+const ACC='#e8743b';
+const BG=new Image(); BG.src='hand_clean.png'; const WP=new Image(); WP.src='warp2.png';
+const c=document.getElementById('c'), g=c.getContext('2d');
+const X=x=>OX+(x-SRC.x)*S, Y=y=>OY+(y-SRC.y)*S;
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const ease=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+const css3=(c,a=1)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const FX={L:[[711,'검지'],[856,'중지'],[980,'약지'],[1095,'새끼손가락']], R:[[1380,'새끼손가락'],[1502,'약지'],[1624,'중지'],[1762,'검지']]};
+// 띠 정보 정리: 손, 손가락 이름, 시작 손가락(검지 쪽)부터 순서
+function prep(B){
+  const side=B.c[0]<1240?'L':'R';
+  const names=B.fingers.map(([a,b])=>{const x=B.c[0]+B.d[0]*(a+b)/2; return FX[side].reduce((m,f)=>Math.abs(f[0]-x)<Math.abs(m[0]-x)?f:m)[1];});
+  // 검지 쪽에서 시작하도록: 오른손은 방향을 뒤집음
+  let BB=B, nm=names;
+  if(side==='R'){ BB={...B,d:[-B.d[0],-B.d[1]],fingers:B.fingers.map(([a,b])=>[-b,-a]).reverse()}; nm=[...names].reverse(); }
+  return {B:BB, side, names:nm};
+}
+const ORDER=[4,2,1,5,3,0].map(i=>prep(G[i]));
+function base(){ g.setTransform(1,0,0,1,0,0); g.fillStyle='#f4f1ea'; g.fillRect(0,0,1920,1080); g.drawImage(BG,SRC.x,SRC.y,SRC.w,SRC.h,OX,OY,SRC.w*S,SRC.h*S); }
+function src(){ g.setTransform(S,0,0,S,OX-SRC.x*S,OY-SRC.y*S); }
+function scr(){ g.setTransform(1,0,0,1,0,0); }
+function dim(side,a){ if(a<=0)return; scr(); const p=PANEL[side]; g.save(); g.globalAlpha=a; g.fillStyle='#f4f1ea'; g.fillRect(X(p[0]),Y(p[1]),(p[2]-p[0])*S,(p[3]-p[1])*S); g.restore(); }
+function nrm(B){ let nx=-B.d[1], ny=B.d[0]; if(ny<0){nx=-nx;ny=-ny;} return [nx,ny]; }
+function PT(B,t,s){ const [nx,ny]=nrm(B); return [B.c[0]+B.d[0]*t+nx*s, B.c[1]+B.d[1]*t+ny*s]; }
+function pinch(B,fingers,alpha){ if(alpha<=0)return; src(); const W=26;
+  for(const [a,b] of fingers){ g.save(); g.globalAlpha=alpha; g.beginPath();
+    [[a-14,-W*2.6],[b+14,-W*2.6],[b+14,W*2.6],[a-14,W*2.6]].forEach(([t,s],i)=>{const q=PT(B,t,s); i?g.lineTo(...q):g.moveTo(...q);}); g.clip(); g.drawImage(WP,0,0); g.restore(); } }
+function arrow(tx,ty,ux,uy,len,alpha){ if(alpha<=0)return; scr(); const ang=Math.atan2(uy,ux);
+  g.save(); g.globalAlpha=alpha; g.translate(tx,ty); g.rotate(ang); const sw=24, hw=60, hl=64;
+  const path=()=>{g.beginPath(); g.moveTo(0,0); g.lineTo(hl,-hw/2-6); g.lineTo(hl,-sw/2); g.lineTo(len,-sw/2); g.arcTo(len+sw/2,-sw/2,len+sw/2,0,sw/2); g.arcTo(len+sw/2,sw/2,len,sw/2,sw/2); g.lineTo(hl,sw/2); g.lineTo(hl,hw/2+6); g.closePath();};
+  g.shadowColor='rgba(0,0,0,.25)'; g.shadowBlur=12; g.shadowOffsetY=4; path(); g.lineJoin='round'; g.lineWidth=12; g.strokeStyle='#fff'; g.stroke();
+  g.shadowColor='transparent'; path(); g.fillStyle=ACC; g.fill(); g.restore(); }
+function bubble(x,y,text,alpha,col){ if(alpha<=0)return; scr();
+  g.save(); g.globalAlpha=alpha; g.font='800 44px "Noto Sans CJK KR",sans-serif'; const w=g.measureText(text).width+56, h=76;
+  x=clamp(x,w/2+20,1900-w/2); y=clamp(y,50,1030);
+  g.shadowColor='rgba(0,0,0,.18)'; g.shadowBlur=14; g.shadowOffsetY=4; g.fillStyle='#fff'; g.beginPath(); g.roundRect(x-w/2,y-h/2,w,h,38); g.fill();
+  g.shadowColor='transparent'; g.lineWidth=5; g.strokeStyle=col; g.stroke(); g.fillStyle='#1f2a37'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(text,x,y+2); g.restore(); }
+function dashOn(B,a,b,alpha,col,t){ if(alpha<=0)return; src(); const W=26; g.save(); g.globalAlpha=alpha*(0.65+0.35*Math.sin(t*7));
+  g.setLineDash([12/S,9/S]); g.lineWidth=5/S; g.strokeStyle=css3(col); const [mx,my]=PT(B,(a+b)/2,0);
+  g.beginPath(); g.ellipse(mx,my,(b-a)/2+14,W*1.15,Math.atan2(B.d[1],B.d[0]),0,Math.PI*2); g.stroke(); g.restore(); }
+function badge(T,start,out){ if(T<start)return; scr(); const a=clamp((T-start)/0.4)*out;
+  g.save(); g.globalAlpha=a; g.font='900 64px "Noto Sans CJK KR",sans-serif'; const txt='완성! 그림과 똑같나요?';
+  const w=g.measureText(txt).width+90; g.fillStyle=ACC; g.beginPath(); g.roundRect(960-w/2,940,w,104,52); g.fill();
+  g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(txt,960,994); g.restore(); }
+function sideDim(side,first,t){ dim(side==='L'?'R':'L',0.35*(first?clamp(t/0.4):1)); }
+// 화살표: 손가락(구간 가운데) 위쪽에서 비스듬히 가리킴
+function pointAt(B,side,a,b,label,col,alpha,t){
+  const [mx,my]=PT(B,(a+b)/2,-26*0.7); const tx=X(mx), ty=Y(my);
+  const up=[B.d[1]*(side==='L'?1:-1), -Math.abs(B.d[0])]; // 위쪽
+  const out=side==='L'?-1:1, rot=0.55*out; const ux=-Math.sin(rot)*1, uy=-Math.cos(rot);
+  const bob=Math.sin(t*6)*12; arrow(tx+ux*(14+bob),ty+uy*(14+bob),ux,uy,150,alpha);
+  bubble(tx+ux*250,ty+uy*250,label,alpha,css3(col));
+}
+// ───────── A안: 완성된 고무줄이 통째로 내려옴 ─────────
+const A_B=3.4, A_END=10*0+6*A_B;
+const A_T=6*A_B+3.6+0.6;
+function drawA(T){
+  base(); const done=T>=6*A_B, out=1-clamp((T-(6*A_B+3.6))/0.6);
+  const k=Math.min(5,Math.floor(T/A_B)), t=T-k*A_B;
+  for(let j=0;j<(done?6:k);j++){ const o=ORDER[j]; pinch(o.B,o.B.fingers,out); src(); drawRubber(g,o.B,{alpha:out}); }
+  if(done){ badge(T,6*A_B,out); return; }
+  const o=ORDER[k], B=o.B, F=B.fingers;
+  sideDim(o.side,k===0||k===3,t); if(k===3) dim('R',0.35*(1-clamp(t/0.4)));
+  const label=(o.side==='L'?'왼손 ':'오른손 ')+o.names[0]+'~'+o.names[o.names.length-1];
+  const cueA=clamp(t/0.3)*(1-clamp((t-1.9)/0.3));
+  dashOn(B,Math.min(F[0][0],F[F.length-1][0]),Math.max(F[0][1],F[F.length-1][1]),cueA,B.color,t);
+  const mid=Math.floor((F.length-1)/2); pointAt(B,o.side,F[mid][0],F[F.length-1-mid][1],label,B.color,clamp(t/0.3)*(1-clamp((t-1.7)/0.3)),t);
+  if(t>=1.1){ const p=clamp((t-1.1)/0.85), lift=230*(1-ease(p)), a=clamp((t-1.1)/0.2);
+    pinch(B,F,clamp((t-1.95)/0.25)); src(); drawRubber(g,B,{lift,alpha:a,loose:1-clamp((t-1.95)/0.3)}); }
+}
+// ───────── B안: 한 손가락에 걸고 당겨 늘림 ─────────
+const HOOK=2.0, PULL=1.5, HOLD=0.6;
+const DUR=ORDER.map(o=>HOOK+(o.B.fingers.length-1)*PULL+HOLD);
+const START=DUR.reduce((acc,d,i)=>(acc.push((acc[i-1]??0)+(i?DUR[i-1]:0)),acc),[]).map((v,i)=>i?v:0);
+const B_SUM=DUR.reduce((a,b)=>a+b,0), B_T=B_SUM+3.6+0.6;
+function drawB(T){
+  base(); const done=T>=B_SUM, out=1-clamp((T-(B_SUM+3.6))/0.6);
+  let k=0; while(k<5&&T>=START[k+1]) k++; const t=T-START[k];
+  for(let j=0;j<(done?6:k);j++){ const o=ORDER[j]; pinch(o.B,o.B.fingers,out); src(); drawRubber(g,o.B,{alpha:out}); }
+  if(done){ badge(T,B_SUM,out); return; }
+  const o=ORDER[k], B=o.B, F=B.fingers, side=o.side, col=B.color;
+  sideDim(side,k===0||k===3,t); if(k===3) dim('R',0.35*(1-clamp(t/0.4)));
+  if(t<HOOK){ // 첫 손가락에 걸기
+    const cue=clamp(t/0.3)*(1-clamp((t-1.6)/0.3));
+    dashOn(B,F[0][0],F[0][1],cue,col,t);
+    pointAt(B,side,F[0][0],F[0][1],(side==='L'?'왼손 ':'오른손 ')+o.names[0]+'에 걸기',col,clamp(t/0.3)*(1-clamp((t-1.5)/0.3)),t);
+    if(t>=1.0){ const p=clamp((t-1.0)/0.75), lift=200*(1-ease(p)); pinch(B,[F[0]],clamp((t-1.75)/0.25)); src();
+      drawRubberPull(g,B,1,{lift,alpha:clamp((t-1.0)/0.2),loose:1-clamp((t-1.75)/0.25)}); }
+    return;
+  }
+  const q=t-HOOK, n=Math.min(F.length-1,Math.floor(q/PULL)), tt=q-n*PULL;   // n: 이미 더 걸린 손가락 수
+  if(q>=(F.length-1)*PULL){ pinch(B,F,1); src(); drawRubber(g,B,{}); return; }
+  pinch(B,F.slice(0,n+1),1);
+  const cue=clamp(tt/0.25)*(1-clamp((tt-1.2)/0.25)), nf=F[n+1];
+  dashOn(B,nf[0],nf[1],cue,col,tt);
+  // 당기는 방향 화살표 (고무줄 위쪽에서 옆으로)
+  const [ax,ay]=PT(B,F[n][1]+10,-26*2.1), [bx,by]=PT(B,nf[1],-26*2.1);
+  const sx=X(ax),sy=Y(ay),ex=X(bx),ey=Y(by), L=Math.hypot(ex-sx,ey-sy);
+  arrow(ex,ey,(sx-ex)/L,(sy-ey)/L,Math.max(90,L-10),cue);
+  bubble((sx+ex)/2,Math.min(sy,ey)-80,o.names[n+1]+'까지 당겨요',cue,css3(col));
+  const pf=clamp((tt-0.45)/0.85); pinch(B,[nf],clamp((tt-1.3)/0.2));
+  src(); drawRubberPull(g,B,n+1+pf,{});
+}
+window.TA=A_T; window.TB=B_T; window.drawA=drawA; window.drawB=drawB;
+window.ready=Promise.all([BG,WP].map(i=>i.decode())).then(()=>document.fonts.load('800 44px "Noto Sans CJK KR"'));
+</script></body></html>
