@@ -12,14 +12,19 @@ ANIMALS = {
     2: [('소', 900, 330, 'host'), ('양', 720, 560, (495, 440, 1560, 705)), ('돼지', 1000, 820, (880, 740, 1545, 1065)),
         ('토끼', 520, 930, (480, 800, 800, 1065)), ('쥐', 700, 1048, (650, 1010, 750, 1058, 'region')), ('오리', 1080, 1000, (1005, 940, 1160, 1060))],
     3: [('코끼리', 600, 300, 'host'), ('가오리', 960, 205, (930, 180, 1010, 232)), ('물고기', 1070, 420, (1020, 390, 1120, 450)),
-        ('잠자리', 460, 568, (410, 540, 505, 610)), ('말', 450, 680, (270, 450, 930, 1000)), ('개', 560, 780, (470, 650, 770, 1050)),
-        ('펭귄', 800, 800, (680, 600, 910, 1010)), ('뱀', 1500, 580, (1180, 500, 1700, 650)), ('고양이', 330, 950, (250, 790, 490, 1050)),
+        ('잠자리', 460, 568, (410, 540, 505, 610)), ('말', 450, 680, (240, 440, 912, 1000)), ('개', 560, 780, (470, 650, 770, 1050)),
+        ('펭귄', 840, 850, (745, 655, 925, 1030, 'open')), ('뱀', 1500, 580, (1250, 500, 1700, 650)), ('고양이', 480, 950, (414, 786, 543, 1043, 'open')),
         ('쥐', 475, 1015, (430, 985, 515, 1045))],
     4: [('코끼리', 1100, 300, 'host'), ('상어', 90, 300, (30, 260, 140, 330)), ('물고기', 530, 360, (470, 325, 590, 395)),
         ('거북이', 760, 270, (600, 150, 860, 410)), ('모기', 1290, 620, (1230, 510, 1350, 690)), ('뱀', 1640, 700, (1580, 500, 1730, 900)),
         ('악어', 380, 640, (270, 580, 510, 700)), ('당나귀', 760, 700, (690, 470, 1350, 1110)), ('강아지', 1230, 860, (970, 790, 1340, 1110)),
         ('고양이', 990, 1030, (940, 940, 1062, 1105)), ('쥐', 1140, 1075, (1040, 1040, 1220, 1105))],
 }
+
+# 쓸데없는 선을 지울 네모 (그림 번호, 이름) → [(x0,y0,x1,y1), ...]  (2026-11-11 사용자: '쓸데없는 곳 테두리 치지 마')
+CUTS = {(3, '코끼리'): [(780, 340, 960, 470), (1180, 600, 1340, 740), (1170, 520, 1235, 615)],   # 말 귀 고리, 코끼리 입 아래
+        (3, '말'): [(300, 960, 360, 1020), (600, 640, 760, 1060), (230, 840, 430, 1010), (895, 560, 940, 720)]}   # 개·펭귄 옆, 개 뒷다리 사이
+# 3번 그림: 고양이 = 개 앞다리·뒷다리 사이에 앉은 노란 모양, 펭귄 = 코끼리 앞다리 사이에 선 노란 모양(대리님 정답 사진으로 확인)
 
 def runs(pts, keep):
     """점 목록에서 keep인 구간만 이어진 선들로 나눈다."""
@@ -33,7 +38,7 @@ def runs(pts, keep):
 
 def inside(p, b): return (b[0] <= p[:, 0]) & (p[:, 0] <= b[2]) & (b[1] <= p[:, 1]) & (p[:, 1] <= b[3])
 
-def outlines(img_bgr, items):
+def outlines(img_bgr, items, k=None):
     g = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     _, m = cv2.threshold(g, 0, 1, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)      # 1 = 회색 실루엣
     res = {}
@@ -53,10 +58,13 @@ def outlines(img_bgr, items):
                 p = c[:, 0, :]; keep = near[p[:, 1], p[:, 0]] == 0
                 for b in boxes: keep &= ~inside(p, b)
                 lines += [l for l in runs(p, keep) if len(l) > 60]   # 짧은 부스러기 선 버림
-        elif len(box) > 4 and box[4] == 'region':                 # 상자로 잘라 '닫힌' 테두리 (아래가 트인 노란 틈 동물: 1번 쥐)
+        elif len(box) > 4 and box[4] in ('region', 'open'):                 # 상자로 잘라 '닫힌' 테두리 (아래가 트인 노란 틈 동물: 1번 쥐)
             r = np.zeros(m.shape, np.uint8); r[box[1]:box[3], box[0]:box[2]] = (m[box[1]:box[3], box[0]:box[2]] == m[y, x])
             n, lab = cv2.connectedComponents(r); cs, _ = cv2.findContours((lab == lab[y, x]).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
             lines = [np.vstack([c[:, 0, :], c[:1, 0, :]]) for c in cs]
+            if box[4] == 'open':                                  # 상자 가장자리에서 잘린 곧은 선은 빼고 실제 경계만
+                edge = lambda p: (p[:, 0] <= box[0] + 2) | (p[:, 0] >= box[2] - 3) | (p[:, 1] <= box[1] + 2) | (p[:, 1] >= box[3] - 3)
+                lines = [l2 for l in lines for l2 in runs(l, ~edge(l))]
         else:
             cls = m[y, x]; n, lab = cv2.connectedComponents((m == cls).astype(np.uint8)); cid = lab[y, x]
             cs, _ = cv2.findContours((lab == cid).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
@@ -68,6 +76,8 @@ def outlines(img_bgr, items):
                     for l in v[3]: cv2.polylines(near, [l.reshape(-1, 1, 2).astype(np.int32)], False, 1, 30)
             for c in cs:
                 p = c[:, 0, :]; lines += [l for l in runs(p, inside(p, box) & (near[p[:, 1], p[:, 0]] == 0)) if len(l) > 25]
+        for r in CUTS.get((k, name), []):
+            lines = [l2 for l in lines for l2 in runs(l, ~inside(l, r))]
         res[idx] = (name, x, y, lines)
     return [res[i] for i in range(len(items))]
 
@@ -77,7 +87,7 @@ if __name__ == '__main__':          # 확인용 그림: python -I animal_outline
     cols = [(0, 0, 255), (0, 160, 0), (255, 0, 0), (255, 0, 255), (0, 200, 200), (0, 128, 255), (128, 0, 255), (128, 128, 0), (0, 0, 0), (200, 0, 100), (100, 50, 0)]
     for k, items in ANIMALS.items():
         a = cv2.imread(f'{d}/q{k}.jpg')
-        for i, (name, x, y, lines) in enumerate(outlines(a, items)):
+        for i, (name, x, y, lines) in enumerate(outlines(a, items, k)):
             for l in lines: cv2.polylines(a, [l.reshape(-1, 1, 2)], False, cols[i % 11], 5)
             cv2.circle(a, (x, y), 12, cols[i % 11], -1); cv2.putText(a, str(i + 1), (x + 14, y), 0, 1.5, cols[i % 11], 4)
         cv2.imwrite(f'{o}/ol{k}.jpg', cv2.resize(a, (1200, 800)))

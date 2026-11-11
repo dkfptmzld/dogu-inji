@@ -82,7 +82,7 @@ def clip(out, T, frame_at, ev):
 LEAD, SHOW = 0.3, 3.0
 names = {}
 for k, items in ANIMALS.items():
-    pic = cv2.imread(os.path.join(d, f'q{k}.jpg')); A = layout(outlines(pic, items)); N = len(A)
+    pic = cv2.imread(os.path.join(d, f'q{k}.jpg')); A = layout(outlines(pic, items, k)); N = len(A)
     canvas = Image.new('RGB', (CW, CH), BG); canvas.paste(Image.fromarray(pic[..., ::-1]), (ML, TOP))
     T = LEAD + DRAW + SHOW
     for i, a in enumerate(A):
