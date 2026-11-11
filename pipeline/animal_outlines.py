@@ -7,7 +7,7 @@ import cv2, numpy as np
 ANIMALS = {
     1: [('새', 385, 215, (345, 185, 445, 255)), ('말', 560, 400, 'host'), ('소', 1000, 470, (600, 440, 1410, 760)),
         ('돼지', 850, 800, (660, 735, 1190, 935)), ('토끼', 1010, 820, (955, 770, 1110, 930)),
-        ('고양이', 900, 980, (815, 925, 1100, 1080)), ('쥐', 1010, 1052, (950, 1028, 1078, 1080)),   # 쥐 = 고양이 배 밑 노란 틈(사용자 확인 2026-11-10)
+        ('고양이', 900, 980, (815, 925, 1100, 1080)), ('쥐', 1010, 1052, (870, 1028, 1085, 1076, 'region')),   # 쥐 = 고양이 배 밑 노란 틈(사용자 확인 2026-11-10)
         ('달팽이', 735, 1040, (690, 1000, 790, 1080))],
     2: [('소', 900, 330, 'host'), ('양', 720, 560, (495, 440, 1560, 705)), ('돼지', 1000, 820, (670, 700, 1250, 1060)),
         ('토끼', 520, 930, (480, 800, 800, 1065)), ('쥐', 700, 1036, (655, 1010, 745, 1056)), ('오리', 1080, 1000, (1005, 940, 1160, 1060))],
@@ -36,25 +36,34 @@ def inside(p, b): return (b[0] <= p[:, 0]) & (p[:, 0] <= b[2]) & (b[1] <= p[:, 1
 def outlines(img_bgr, items):
     g = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     _, m = cv2.threshold(g, 0, 1, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)      # 1 = 회색 실루엣
-    res = []
-    boxes = [it[3] for it in items if it[3] != 'host']
-    for name, x, y, box in items:
+    res = {}
+    boxes = [it[3][:4] for it in items if it[3] != 'host']
+    order = [i for i, it in enumerate(items) if it[3] != 'host'] + [i for i, it in enumerate(items) if it[3] == 'host']
+    for idx in order:
+        name, x, y, box = items[idx]
         if box == 'host':
             n, lab, st, _ = cv2.connectedComponentsWithStats(m.astype(np.uint8)); cid = 1 + int(np.argmax(st[1:, 4]))
             cs, _ = cv2.findContours((lab == cid).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            near = np.zeros(m.shape, np.uint8)                  # 다른 동물 테두리 자리 (큰 동물 안쪽 선 = 다른 동물 몸)
+            for v in res.values():
+                for l in v[3]: cv2.polylines(near, [l.reshape(-1, 1, 2).astype(np.int32)], False, 1, 34)
             lines = []
             for c in cs:
-                p = c[:, 0, :]; keep = np.ones(len(p), bool)
+                p = c[:, 0, :]; keep = near[p[:, 1], p[:, 0]] == 0
                 for b in boxes: keep &= ~inside(p, b)
-                lines += runs(p, keep)
+                lines += [l for l in runs(p, keep) if len(l) > 60]   # 짧은 부스러기 선 버림
+        elif len(box) > 4 and box[4] == 'region':                 # 상자로 잘라 '닫힌' 테두리 (아래가 트인 노란 틈 동물: 1번 쥐)
+            r = np.zeros(m.shape, np.uint8); r[box[1]:box[3], box[0]:box[2]] = (m[box[1]:box[3], box[0]:box[2]] == m[y, x])
+            n, lab = cv2.connectedComponents(r); cs, _ = cv2.findContours((lab == lab[y, x]).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            lines = [np.vstack([c[:, 0, :], c[:1, 0, :]]) for c in cs]
         else:
             cls = m[y, x]; n, lab = cv2.connectedComponents((m == cls).astype(np.uint8)); cid = lab[y, x]
             cs, _ = cv2.findContours((lab == cid).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
             lines = []
             for c in cs:
                 p = c[:, 0, :]; lines += runs(p, inside(p, box))
-        res.append((name, x, y, lines))
-    return res
+        res[idx] = (name, x, y, lines)
+    return [res[i] for i in range(len(items))]
 
 if __name__ == '__main__':          # 확인용 그림: python -I animal_outlines.py <03-2 폴더> <출력 폴더>
     import sys
