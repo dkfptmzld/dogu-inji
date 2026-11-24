@@ -157,7 +157,7 @@ function s96() { FRONT(3.0); const F = fishParts(), R = rig(5, 5, [1, 2, 3, 4, 0
   const order = [['H', 4], ['S', 1], ['H', 0], ['S', 0], ['S', 2], ['H', 3], ['S', 3], ['S', 4], ['H', 1], ['H', 2]], per = 1.1, S0 = 2.4, T = S0 + order.length * per + 5;
   order.forEach((o, i) => ev(S0 + i * per + 0.1, 'pop', i)); ev(T - 3.8, 'ding');
   return { T, frame(t) { R.S.forEach((s, i) => strawShow(s, F.S[i])); R.H.forEach((h, i) => hubShow(h, F.H[i]));
-    order.forEach(([k, i], j) => { const p = ez(t, S0 + j * per, 0.7), o = k === 'S' ? R.S[i] : R.H[i]; o.position.set(0, -6 * p * p, 0); if (k === 'S') o.position.x = (i % 2 ? 1 : -1) * 2 * p; o.visible = o.visible && p < 0.98; });
+    order.forEach(([k, i], j) => { const p = ez(t, S0 + j * per, 0.7), o = k === 'S' ? R.S[i] : R.H[i]; o.position.set(0, -6 * p * p, 0); if (k === 'H') o.position.add(F.H[i]); if (k === 'S') o.position.x = (i % 2 ? 1 : -1) * 2 * p; o.visible = o.visible && p < 0.98; });
     render3D(); title('물고기를 하나씩 하나씩 모두 빼요', win(t, 0.3, T - 3.9));
     badge('빼기 힘든 분은 선생님이 빨대 한쪽을 잡아 드려요', win(t, 1.4, S0 + order.length * per / 2 + 1));
     badge('손으로 끼고 빼는 것이 중요한 소근육 운동!', win(t, S0 + order.length * per / 2 + 1, T - 3.9));
