@@ -23,8 +23,7 @@ def sticks(n=10, D=3.6, LEAVE=1.0):
         ev += [{'t': t + 1.2, 'type': 'tok', 'p': i}, {'t': t + 1.3, 'type': 'whoosh'}, {'t': t + 2.9, 'type': 'count', 'p': i + 1}]
     return ev + [{'t': n * D + LEAVE, 'type': 'ding'}]
 
-JOBS = [('18-1/1.mp4', fingering(10)), ('18-1/2.mp4', fingering(6)), ('18-1/3.mp4', fingering(8)), ('18-1/4.mp4', fingering(8)),
-        ('08-2/1.mp4', sticks())]
+JOBS = [('18-1/1.mp4', fingering(10)), ('18-1/2.mp4', fingering(6)), ('18-1/3.mp4', fingering(8)), ('18-1/4.mp4', fingering(8))]
 tmp = tempfile.mkdtemp()
 for rel, ev in JOBS:
     out = os.path.join(V, rel); keep = os.path.join(here, '..', 'originals', '무음영상'); os.makedirs(keep, exist_ok=True)
